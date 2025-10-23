@@ -1,0 +1,316 @@
+openapi: 3.0.0
+info:
+  title: FoodExpress API
+  version: 1.0.0
+  description: API de gestion des utilisateurs, restaurants et menus avec authentification JWT.
+
+servers:
+  - url: http://localhost:3000
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+    Restaurant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        opening_hours:
+          type: string
+    Menu:
+      type: object
+      properties:
+        id:
+          type: string
+        restaurant_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+
+paths:
+  /auth/signup:
+    post:
+      summary: Créer un compte utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, username, password]
+              properties:
+                email: { type: string }
+                username: { type: string }
+                password: { type: string }
+                role: { type: string, enum: [user, admin] }
+            example:
+              email: "alice@example.com"
+              username: "Alice"
+              password: "secret123"
+      responses:
+        "201":
+          description: Utilisateur créé
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Email déjà utilisé ou données invalides
+
+  /auth/login:
+    post:
+      summary: Connecter un utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+            example:
+              email: "alice@example.com"
+              password: "secret123"
+      responses:
+        "200":
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        "400":
+          description: Identifiants invalides
+
+  /users/{id}:
+    get:
+      summary: Lire un utilisateur (self ou admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Profil utilisateur
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          description: Accès interdit
+        "404":
+          description: Introuvable
+    patch:
+      summary: Mettre à jour un utilisateur (self ou admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "200":
+          description: Utilisateur mis à jour
+        "403":
+          description: Accès interdit
+        "404":
+          description: Introuvable
+    delete:
+      summary: Supprimer un utilisateur (admin uniquement)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Supprimé
+        "403":
+          description: Accès interdit
+        "404":
+          description: Introuvable
+
+  /restaurants:
+    get:
+      summary: Liste des restaurants (public)
+      parameters:
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, address] }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Liste des restaurants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Restaurant"
+    post:
+      summary: Créer un restaurant (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Restaurant"
+      responses:
+        "201":
+          description: Restaurant créé
+
+  /restaurants/{id}:
+    patch:
+      summary: Mettre à jour un restaurant (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Restaurant"
+      responses:
+        "200":
+          description: Restaurant mis à jour
+        "404":
+          description: Introuvable
+    delete:
+      summary: Supprimer un restaurant (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Supprimé
+        "404":
+          description: Introuvable
+
+  /menus:
+    get:
+      summary: Liste des menus (public)
+      parameters:
+        - name: sort
+          in: query
+          schema: { type: string, enum: [price, category] }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Liste des menus
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Menu"
+    post:
+      summary: Créer un menu (admin)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Menu"
+      responses:
+        "201":
+          description: Menu créé
+
+  /menus/{id}:
+    patch:
+      summary: Mettre à jour un menu (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Menu"
+      responses:
+        "200":
+          description: Menu mis à jour
+        "404":
+          description: Introuvable
+    delete:
+      summary: Supprimer un menu (admin)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Supprimé
+        "404":
+          description: Introuvable
